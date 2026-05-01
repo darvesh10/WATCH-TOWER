@@ -1,5 +1,6 @@
 import {type Request, type Response } from 'express';
 import { pool } from '../config/db.js';
+import { addMonitorToQueue } from '../queues/monitor.queue.js';
 
 export const addMonitor = async (req: any, res: Response) => {
   const { url, interval } = req.body;
@@ -10,7 +11,11 @@ export const addMonitor = async (req: any, res: Response) => {
       'INSERT INTO monitors (user_id, url, check_interval) VALUES ($1, $2, $3) RETURNING *',
       [userId, url, interval]
     );
-    res.status(201).json({ message: "Monitor added", monitor: result.rows[0] });
+    const monitor = result.rows[0];
+    //  MAGIC LINE: BullMQ Queue mein task daal do
+    await addMonitorToQueue(monitor.id, monitor.url, monitor.check_interval);
+
+    res.status(201).json({ message: "Monitor added & scheduled", monitor });
   } catch (err) {
     res.status(500).json({ error: "Failed to add monitor" });
   }
