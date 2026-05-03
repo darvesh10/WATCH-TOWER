@@ -17,7 +17,7 @@ export const validate = (schema: ZodObject<any>) =>
         return res.status(400).json({ 
           status: "fail", 
           message: errorMessage,
-          details: error.errors // Saare errors dekhne ke liye
+           // Saare errors dekhne ke liye
         });
       }
       return res.status(500).json({ message: "Internal Server Error" });

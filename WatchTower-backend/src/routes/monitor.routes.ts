@@ -7,7 +7,7 @@ import { z } from 'zod';
 const router = Router();
 
 const monitorSchema = z.object({
-  url: z.string(),
+  url: z.string().url(),
   interval: z.number().min(10),
 });
 

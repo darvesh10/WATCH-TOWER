@@ -11,8 +11,24 @@ export const register = async (req: Request, res: Response) => {
       'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email',
       [email, hashedPassword]
     );
-    res.status(201).json({ message: "User created", user: result.rows[0] });
-  } catch (err: any) {
+    const user = result.rows[0];
+
+    //  NEW: token generate
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1d' }
+    );
+
+    //  cookie set (same as login)
+    res.cookie('token', token, { httpOnly: true }).status(201)
+      .json({
+        message: "User registered & logged in",
+        user,
+        token
+      });
+  } 
+  catch (err: any) {
     res.status(400).json({ error: "Email already exists" });
   }
 };
