@@ -3,46 +3,76 @@ import axios from "axios";
 import { redisConnection } from "../config/redis.js";
 import { pool } from "../config/db.js";
 import { sendDiscordAlert } from "../utils/alert.js";
+import { monitorStatusCounter, responseTimeHistogram } from "../config/metrics.js";
 
 export const monitorWorker = new Worker(
-  "monitor-requests", // Wahi naam jo Queue ka hai
+  "monitor-requests",
   async (job) => {
     const { monitorId, url } = job.data;
+
     console.log(`🔍 Checking website: ${url}`);
 
     const startTime = Date.now();
+
     try {
-      // 1. Asli Ping (Request)
-      const response = await axios.get(url, { timeout: 10000 }); // 10s timeout
-      const responseTime = Date.now() - startTime;
+      // 1. Website ping
+      const response = await axios.get(url, { timeout: 10000 });
 
-      // 2. Database Update (Success)
-      await pool.query(
-        "UPDATE monitors SET last_status = $1, last_checked = NOW() WHERE id = $2",
-        [response.status, monitorId],
+      const responseTimeMs = Date.now() - startTime;
+      const responseTimeSec = responseTimeMs / 1000;
+
+      // ✅ PROMETHEUS METRICS (SUCCESS)
+      monitorStatusCounter.inc({
+        url,
+        status_code: response.status,
+        result: "up",
+      });
+
+      responseTimeHistogram.observe(
+        { url },
+        responseTimeSec
       );
 
-      console.log(`✅ ${url} is UP (${response.status}) - ${responseTime}ms`);
-    } catch (error: any) {
-      // 3. Database Update (Failure)
+      // 2. Database update
+      await pool.query(
+        "UPDATE monitors SET last_status = $1, last_checked = NOW() WHERE id = $2",
+        [response.status, monitorId]
+      );
+
+      console.log(
+        `✅ ${url} is UP (${response.status}) - ${responseTimeMs}ms`
+      );
+
+    } catch (error:any) {
       const status = error.response?.status || 500;
+
+      // ❌ PROMETHEUS METRICS (FAILURE)
+      monitorStatusCounter.inc({
+        url,
+        status_code: status,
+        result: "down",
+      });
+
+      // 3. Database update
       await pool.query(
         "UPDATE monitors SET last_status = $1, last_checked = NOW() WHERE id = $2",
-        [status, monitorId],
+        [status, monitorId]
       );
 
-      // We check for !status.toString().startsWith('2') to be safe,
-      // though inside a catch block, it's usually already a non-200 status.
+      // 4. Discord alert
       if (status !== 200) {
-        await sendDiscordAlert(`🚨 ALERT: ${url} is DOWN! Status: ${status}`);
+        await sendDiscordAlert(
+          `🚨 ALERT: ${url} is DOWN! Status: ${status}`
+        );
       }
+
       console.log(`❌ ${url} is DOWN (${status})`);
-      // Phase 4 mein hum yahan Alert trigger karenge!
     }
   },
-  { connection: redisConnection },
+  { connection: redisConnection }
 );
 
+// Worker failure listener
 monitorWorker.on("failed", (job, err) => {
   console.error(`🚨 Job failed for ${job?.id}: ${err.message}`);
 });
