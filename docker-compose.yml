@@ -1,18 +1,52 @@
 version: '3.8'
 
 services:
+  # 1. Backend & Worker
+  app:
+    build: .
+    container_name: watchtower-app
+    ports:
+      - "3000:3000"
+
+    env_file:
+      - .env
+
+    depends_on:
+      - prometheus
+
+    restart: always
+
+  # 2. Prometheus
   prometheus:
     image: prom/prometheus
     container_name: prometheus
+
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
     ports:
       - "9090:9090"
 
+    restart: always
+
+  # 3. Grafana
   grafana:
     image: grafana/grafana
     container_name: grafana
+
     ports:
-      - "3001:3000" # Hum Grafana ko 3001 par chalayenge
+      - "3001:3000"
+
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin # Default password
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+    depends_on:
+      - prometheus
+
+    restart: always
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  grafana_data:
