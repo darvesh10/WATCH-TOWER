@@ -2,9 +2,82 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
+  const router = useRouter();
+
+  // UI State
   const [isLogin, setIsLogin] = useState(true);
+
+  // Form State
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+        {
+          email,
+          password,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+
+      localStorage.setItem("token", res.data.token);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
+        {
+          email,
+          password,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+
+      localStorage.setItem("token", res.data.token);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Register failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper to clear form when switching tabs
+  const toggleAuthMode = (mode: boolean) => {
+    setIsLogin(mode);
+    setError("");
+    setEmail("");
+    setPassword("");
+  };
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-x-hidden bg-black px-6 py-12 text-white">
@@ -16,7 +89,7 @@ export default function AuthPage() {
         
         {/* ── LEFT COLUMN: Project Details ── */}
         <div className="flex flex-col space-y-8">
-          <Link href="/" className="flex items-center gap-3 w-max transition-opacity hover:opacity-80">
+          <Link href="/" className="flex w-max items-center gap-3 transition-opacity hover:opacity-80">
             <div className="h-3 w-3 animate-pulse rounded-full bg-emerald-400" />
             <h1 className="text-xl font-black tracking-[0.2em] text-white sm:text-2xl">
               WATCHTOWER
@@ -51,19 +124,19 @@ export default function AuthPage() {
 
         {/* ── RIGHT COLUMN: Auth Card ── */}
         <div className="mx-auto w-full max-w-md">
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl shadow-2xl">
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
             
             {/* Sliding Toggle Control */}
             <div className="relative mb-8 flex h-14 w-full rounded-full border border-white/10 bg-black/50 p-1">
               {/* Active Slider Background */}
               <div
-                className={`absolute bottom-1 top-1 w-[calc(50%-4px)] rounded-full bg-emerald-500/20 border border-emerald-500/30 transition-transform duration-300 ease-in-out ${
+                className={`absolute bottom-1 top-1 w-[calc(50%-4px)] rounded-full border border-emerald-500/30 bg-emerald-500/20 transition-transform duration-300 ease-in-out ${
                   isLogin ? "translate-x-0" : "translate-x-full"
                 }`}
               />
               
               <button
-                onClick={() => setIsLogin(true)}
+                onClick={() => toggleAuthMode(true)}
                 className={`relative z-10 flex-1 rounded-full text-sm font-semibold transition-colors duration-300 ${
                   isLogin ? "text-emerald-300" : "text-gray-400 hover:text-white"
                 }`}
@@ -71,7 +144,7 @@ export default function AuthPage() {
                 Login
               </button>
               <button
-                onClick={() => setIsLogin(false)}
+                onClick={() => toggleAuthMode(false)}
                 className={`relative z-10 flex-1 rounded-full text-sm font-semibold transition-colors duration-300 ${
                   !isLogin ? "text-emerald-300" : "text-gray-400 hover:text-white"
                 }`}
@@ -80,20 +153,25 @@ export default function AuthPage() {
               </button>
             </div>
 
-            {/* Forms Container with Transition */}
+            {/* Forms Container */}
             <div className="relative">
-              {/* Login Form */}
+              
+              {/* ── LOGIN FORM ── */}
               <form 
+                onSubmit={handleLogin}
                 className={`transition-all duration-500 ease-in-out ${
                   isLogin 
-                    ? "visible translate-x-0 opacity-100 relative" 
-                    : "invisible -translate-x-8 opacity-0 absolute inset-0"
+                    ? "visible relative translate-x-0 opacity-100" 
+                    : "invisible absolute inset-0 -translate-x-8 opacity-0"
                 } space-y-5`}
               >
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-300">Email Address</label>
                   <input
                     type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:bg-black/60 focus:ring-1 focus:ring-emerald-400/50"
                   />
@@ -101,42 +179,45 @@ export default function AuthPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <label className="block text-sm font-medium text-gray-300">Password</label>
-                    <a href="#" className="text-xs text-emerald-400 hover:text-emerald-300 transition">Forgot?</a>
+                    <a href="#" className="text-xs text-emerald-400 transition hover:text-emerald-300">Forgot?</a>
                   </div>
                   <input
                     type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:bg-black/60 focus:ring-1 focus:ring-emerald-400/50"
                   />
                 </div>
+
+                {error && <p className="text-sm font-medium text-red-400">{error}</p>}
+
                 <button
                   type="submit"
-                  className="mt-6 w-full rounded-xl bg-emerald-400 py-3.5 font-bold text-black transition hover:scale-[1.02] hover:bg-emerald-300 active:scale-[0.98] shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:shadow-[0_0_25px_rgba(52,211,153,0.5)]"
+                  disabled={loading}
+                  className="mt-6 w-full rounded-xl bg-emerald-400 py-3.5 font-bold text-black shadow-[0_0_20px_rgba(52,211,153,0.3)] transition hover:scale-[1.02] hover:bg-emerald-300 hover:shadow-[0_0_25px_rgba(52,211,153,0.5)] active:scale-[0.98] disabled:opacity-70 disabled:hover:scale-100"
                 >
-                  Sign In to Dashboard
+                  {loading ? "Signing In..." : "Sign In to Dashboard"}
                 </button>
               </form>
 
-              {/* Register Form */}
+              {/* ── REGISTER FORM ── */}
               <form 
+                onSubmit={handleRegister}
                 className={`transition-all duration-500 ease-in-out ${
                   !isLogin 
-                    ? "visible translate-x-0 opacity-100 relative" 
-                    : "invisible translate-x-8 opacity-0 absolute inset-0"
+                    ? "visible relative translate-x-0 opacity-100" 
+                    : "invisible absolute inset-0 translate-x-8 opacity-0"
                 } space-y-5`}
               >
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-300">Full Name</label>
-                  <input
-                    type="text"
-                    placeholder="John Doe"
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:bg-black/60 focus:ring-1 focus:ring-emerald-400/50"
-                  />
-                </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-300">Email Address</label>
                   <input
                     type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:bg-black/60 focus:ring-1 focus:ring-emerald-400/50"
                   />
@@ -145,15 +226,22 @@ export default function AuthPage() {
                   <label className="mb-2 block text-sm font-medium text-gray-300">Password</label>
                   <input
                     type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a strong password"
                     className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:bg-black/60 focus:ring-1 focus:ring-emerald-400/50"
                   />
                 </div>
+
+                {error && <p className="text-sm font-medium text-red-400">{error}</p>}
+
                 <button
                   type="submit"
-                  className="mt-6 w-full rounded-xl border border-emerald-400 bg-emerald-500/10 py-3.5 font-bold text-emerald-400 transition hover:bg-emerald-500/20 active:scale-[0.98]"
+                  disabled={loading}
+                  className="mt-6 w-full rounded-xl border border-emerald-400 bg-emerald-500/10 py-3.5 font-bold text-emerald-400 transition hover:bg-emerald-500/20 active:scale-[0.98] disabled:opacity-70 disabled:hover:scale-100"
                 >
-                  Create Account
+                  {loading ? "Creating..." : "Create Account"}
                 </button>
               </form>
             </div>
