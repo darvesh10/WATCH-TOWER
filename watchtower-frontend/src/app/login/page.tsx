@@ -17,59 +17,54 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
-        {
-          email,
-          password,
-        },
-        {
-          withCredentials: true,
-        }
-      );
-
-      localStorage.setItem("token", res.data.token);
-      router.push("/dashboard");
-    } catch (err: any) {
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+    setLoading(true);
+    setError("");
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+      { email, password },
+      { withCredentials: true }
+    );
+    localStorage.setItem("token", res.data.token);
+    router.push("/dashboard");
+  } catch (err: unknown) {
+    // This "if" check removes the red underline
+    if (axios.isAxiosError(err)) {
       setError(err.response?.data?.error || "Login failed");
-    } finally {
-      setLoading(false);
+    } else {
+      setError("An unexpected error occurred");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
-        {
-          email,
-          password,
-        },
-        {
-          withCredentials: true,
-        }
-      );
-
-      localStorage.setItem("token", res.data.token);
-      router.push("/dashboard");
-    } catch (err: any) {
+const handleRegister = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+    setLoading(true);
+    setError("");
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
+      { email, password },
+      { withCredentials: true }
+    );
+    localStorage.setItem("token", res.data.token);
+    router.push("/dashboard");
+  } catch (err: unknown) {
+    // This "if" check removes the red underline
+    if (axios.isAxiosError(err)) {
       setError(err.response?.data?.error || "Register failed");
-    } finally {
-      setLoading(false);
+    } else {
+      setError("An unexpected error occurred");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Helper to clear form when switching tabs
   const toggleAuthMode = (mode: boolean) => {
