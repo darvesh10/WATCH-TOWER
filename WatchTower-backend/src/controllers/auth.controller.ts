@@ -1,4 +1,4 @@
-import {type Request, type Response } from 'express';
+import { type Request, type Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db.js';
@@ -13,22 +13,25 @@ export const register = async (req: Request, res: Response) => {
     );
     const user = result.rows[0];
 
-    //  NEW: token generate
+    // Token generate
     const token = jwt.sign(
       { id: user.id },
       process.env.JWT_SECRET!,
       { expiresIn: '1d' }
     );
 
-    //  cookie set (same as login)
-    res.cookie('token', token, { httpOnly: true }).status(201)
-      .json({
-        message: "User registered & logged in",
-        user,
-        token
-      });
-  } 
-  catch (err: any) {
+    // ✅ FIX: Added .status().json() after setting cookie to complete the request
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    }).status(201).json({
+      message: "User registered successfully",
+      user,
+      token
+    });
+
+  } catch (err: any) {
     res.status(400).json({ error: "Email already exists" });
   }
 };
@@ -44,8 +47,25 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET!, { expiresIn: '1d' });
-    res.cookie('token', token, { httpOnly: true }).json({ message: "Logged in", token });
+    
+    // ✅ FIX: Added .status().json() after setting cookie to complete the request
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    }).status(200).json({
+      message: "Logged in successfully",
+      token
+    });
+
   } catch (err) {
     res.status(500).json({ error: "Login failed" });
   }
+};
+
+export const logout = async (req: Request, res: Response) => {
+  res.clearCookie("token");
+  res.json({
+    message: "Logged out",
+  });
 };

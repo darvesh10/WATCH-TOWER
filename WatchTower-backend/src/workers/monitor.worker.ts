@@ -12,67 +12,44 @@ export const monitorWorker = new Worker(
 
     console.log(`🔍 Checking website: ${url}`);
 
-    const startTime = Date.now();
+   const startTime = Date.now();
 
     try {
-      // 1. Website ping
       const response = await axios.get(url, { timeout: 10000 });
-
       const responseTimeMs = Date.now() - startTime;
       const responseTimeSec = responseTimeMs / 1000;
 
-      // ✅ PROMETHEUS METRICS (SUCCESS)
-      monitorStatusCounter.inc({
-        url,
-        status_code: response.status,
-        result: "up",
-      });
+      // ✅ Metrics
+      monitorStatusCounter.inc({ url, status_code: response.status, result: "up" });
+      responseTimeHistogram.observe({ url }, responseTimeSec);
 
-      responseTimeHistogram.observe(
-        { url },
-        responseTimeSec
-      );
-
-      // 2. Database update
+      // 2. Database update (Added last_response_time)
       await pool.query(
-        "UPDATE monitors SET last_status = $1, last_checked = NOW() WHERE id = $2",
-        [response.status, monitorId]
+        "UPDATE monitors SET last_status = $1, last_checked = NOW(), last_response_time = $2 WHERE id = $3",
+        [response.status, responseTimeMs, monitorId]
       );
 
-      console.log(
-        `✅ ${url} is UP (${response.status}) - ${responseTimeMs}ms`
-      );
+      console.log(`✅ ${url} is UP (${response.status}) - ${responseTimeMs}ms`);
 
-    } catch (error:any) {
+    } catch (error: any) {
+      const responseTimeMs = Date.now() - startTime; // Still track time on failure
       const status = error.response?.status || 500;
 
-      // ❌ PROMETHEUS METRICS (FAILURE)
-      monitorStatusCounter.inc({
-        url,
-        status_code: status,
-        result: "down",
-      });
+      // ❌ Metrics
+      monitorStatusCounter.inc({ url, status_code: status, result: "down" });
 
-      // 3. Database update
+      // 3. Database update (Added last_response_time)
       await pool.query(
-        "UPDATE monitors SET last_status = $1, last_checked = NOW() WHERE id = $2",
-        [status, monitorId]
+        "UPDATE monitors SET last_status = $1, last_checked = NOW(), last_response_time = $2 WHERE id = $3",
+        [status, responseTimeMs, monitorId]
       );
 
-      // 4. Discord alert
       if (status !== 200) {
-        await sendDiscordAlert(
-          `🚨 ALERT: ${url} is DOWN! Status: ${status}`
-        );
+        await sendDiscordAlert(`🚨 ALERT: ${url} is DOWN! Status: ${status}`);
       }
 
-      console.log(`❌ ${url} is DOWN (${status})`);
+      console.log(`❌ ${url} is DOWN (${status}) - ${responseTimeMs}ms`);
     }
   },
   { connection: redisConnection }
 );
-
-// Worker failure listener
-monitorWorker.on("failed", (job, err) => {
-  console.error(`🚨 Job failed for ${job?.id}: ${err.message}`);
-});

@@ -3,7 +3,10 @@ import { pool } from '../config/db.js';
 import { addMonitorToQueue } from '../queues/monitor.queue.js';
 
 export const addMonitor = async (req: any, res: Response) => {
-  const { url, interval } = req.body;
+  const {
+  url,
+  interval = 60000,
+} = req.body;
   const userId = req.user.id; // Automated from Token!
 
   try {
@@ -23,9 +26,29 @@ export const addMonitor = async (req: any, res: Response) => {
 
 export const getMyMonitors = async (req: any, res: Response) => {
   try {
-    const result = await pool.query('SELECT * FROM monitors WHERE user_id = $1', [req.user.id]);
+    const result = await pool.query('SELECT * FROM monitors WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: "Fetch failed" });
+  }
+};
+
+
+export const deleteMonitor = async (req: any, res: Response) => {
+  const monitorId = req.params.id;
+
+  try {
+    await pool.query(
+      "DELETE FROM monitors WHERE id = $1 AND user_id = $2",
+      [monitorId, req.user.id]
+    );
+
+    res.json({
+      message: "Monitor deleted successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Failed to delete monitor",
+    });
   }
 };
