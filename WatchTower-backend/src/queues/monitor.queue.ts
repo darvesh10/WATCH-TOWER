@@ -6,15 +6,16 @@ export const monitorQueue = new Queue('monitor-requests', {
 });
 
 // Ek helper function jo job add karega
+// src/queues/monitor.queue.ts
 export const addMonitorToQueue = async (monitorId: string, url: string, interval: number) => {
   await monitorQueue.add(
     `monitor-${monitorId}`, 
     { monitorId, url },
     {
       repeat: {
-        every: interval * 1000, // BullMQ milliseconds leta hai
+        every: interval, // 🔥 YAHAN SE "* 1000" HATA DIYA
       },
-      jobId: monitorId, // Unique ID taaki jobs overlap na ho
+      jobId: monitorId,
     }
   );
 };

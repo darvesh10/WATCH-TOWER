@@ -1,10 +1,9 @@
 "use client";
 
 import axios from "axios";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// ✅ Type Fix: last_response_time
 type Monitor = {
   id: number;
   url: string;
@@ -16,59 +15,51 @@ type Monitor = {
 export default function DashboardPage() {
   const router = useRouter();
   
-  // States
-
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0); // 🔥 Ye table refresh karega
   
-  // Add Monitor States
   const [showModal, setShowModal] = useState(false);
   const [newUrl, setNewUrl] = useState("");
+  const [interval, setIntervalValue] = useState(10000); // 🔥 Zod ke hisaab se 10000ms
   const [adding, setAdding] = useState(false);
 
-  // Fetch Monitors
- const fetchMonitors = useCallback(async () => {
-  try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/monitors`,
-      {
-        withCredentials: true,
+  // ✅ PERFECT FETCH LOGIC: Koi ESLint warning nahi aayegi ab
+  useEffect(() => {
+    const fetchMonitors = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/monitors`,
+          { withCredentials: true }
+        );
+        setMonitors(res.data);
+      } catch (err) {
+        console.error("Failed to fetch monitors:", err);
+        setMonitors([]);
+      } finally {
+        setLoading(false);
       }
-    );
+    };
 
-    setMonitors(res.data);
-  } catch (err) {
-    console.error("Failed to fetch monitors:", err);
+    fetchMonitors();
+  }, [refreshKey]); // Jab refreshKey change hoga, ye auto-fetch karega
 
-    setMonitors([]);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  const triggerRefresh = () => setRefreshKey((prev) => prev + 1);
 
+  const handleLogout = async () => {
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`,
+        {},
+        { withCredentials: true }
+      );
+      router.push("/login");
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-useEffect(() => {
-  fetchMonitors();
-}, [fetchMonitors]);
-
-
-  // ✅ Fix: Only run router/fetch after mount
-
- const handleLogout = async () => {
-  try {
-    await axios.post(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`,
-      {},
-      { withCredentials: true }
-    );
-
-    router.push("/login");
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-  // ✅ Fix: Add Monitor with Interval
   const handleAddMonitor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUrl) return;
@@ -76,14 +67,15 @@ useEffect(() => {
     try {
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/monitors`,
-      { 
-  url: newUrl
-},
+        { 
+          url: newUrl,
+          interval: Number(interval) // 10000, 60000 jayega yahan se
+        },
         { withCredentials: true }
       );
       setNewUrl("");
       setShowModal(false);
-      fetchMonitors(); 
+      triggerRefresh(); // 🔥 Table auto-update
     } catch (err) {
       console.error("Failed to add monitor", err);
     } finally {
@@ -91,7 +83,6 @@ useEffect(() => {
     }
   };
 
-  // ✅ Fix: Delete Monitor
   const handleDelete = async (id: number) => {
     if (!window.confirm("Are you sure?")) return;
     try {
@@ -99,7 +90,7 @@ useEffect(() => {
         `${process.env.NEXT_PUBLIC_API_URL}/api/monitors/${id}`,
         { withCredentials: true }
       );
-      fetchMonitors();
+      triggerRefresh(); // 🔥 Table auto-update
     } catch (err) {
       console.error("Delete failed:", err);
     }
@@ -171,7 +162,7 @@ useEffect(() => {
               {loading ? (
                 <tr><td colSpan={4} className="py-10 text-center text-gray-400">Loading...</td></tr>
               ) : monitors.length === 0 ? (
-                <tr><td colSpan={4} className="py-10 text-center text-gray-400">No monitors found. Click "+ Add Monitor"</td></tr>
+                <tr><td colSpan={4} className="py-10 text-center text-gray-400">{"No monitors found. Click '+ Add Monitor'"}</td></tr>
               ) : monitors.map((monitor) => (
                 <tr key={monitor.id} className="border-b border-white/5 hover:bg-white/5 transition">
                   <td className="px-6 py-4 font-medium">{monitor.url}</td>
@@ -185,7 +176,7 @@ useEffect(() => {
                   </td>
                   <td className="px-6 py-4 flex gap-3">
                     <button 
-                      onClick={() => router.push(`/dashboard/monitor/${monitor.id}`)}
+                      onClick={() => router.push(`/dashboard/analytics/${monitor.id}`)}
                       className="rounded-lg border border-white/10 px-3 py-1 text-sm transition hover:bg-white/10"
                     >
                       Analytics
@@ -204,11 +195,12 @@ useEffect(() => {
         </div>
       </section>
 
-      {/* Modal for Adding Monitor */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <form onSubmit={handleAddMonitor} className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-8">
             <h3 className="mb-6 text-2xl font-bold">Add New Monitor</h3>
+            
             <div className="space-y-4">
               <input
                 type="url"
@@ -218,10 +210,22 @@ useEffect(() => {
                 onChange={(e) => setNewUrl(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 outline-none focus:border-emerald-400"
               />
+              
+              {/* Values updated to match Zod (.min(10000)) and BullMQ directly */}
+              <select 
+                value={interval} 
+                onChange={(e) => setIntervalValue(Number(e.target.value))}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 outline-none focus:border-emerald-400 text-gray-300"
+              >
+                <option value={10000}>Every 10 Seconds</option>
+                <option value={60000}>Every 1 Minute</option>
+                <option value={300000}>Every 5 Minutes</option>
+              </select>
             </div>
+
             <div className="mt-8 flex gap-3">
-              <button type="button" onClick={() => setShowModal(false)} className="flex-1 rounded-xl bg-white/5 py-3 font-semibold">Cancel</button>
-              <button disabled={adding} type="submit" className="flex-1 rounded-xl bg-emerald-400 py-3 font-bold text-black disabled:opacity-50">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 rounded-xl bg-white/5 py-3 font-semibold hover:bg-white/10 transition">Cancel</button>
+              <button disabled={adding} type="submit" className="flex-1 rounded-xl bg-emerald-400 py-3 font-bold text-black disabled:opacity-50 hover:bg-emerald-300 transition">
                 {adding ? "Adding..." : "Confirm"}
               </button>
             </div>
