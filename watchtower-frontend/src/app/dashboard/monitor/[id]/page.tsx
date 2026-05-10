@@ -213,7 +213,7 @@ export default function AnalyticsPage() {
               {/* Iframe */}
               <div className="h-[260px] p-3 sm:h-[310px] sm:p-4">
                 <iframe
-                  src={`${GRAFANA_BASE_URL}?orgId=1&var-url=${encodedUrl}&panelId=${id}&theme=dark&refresh=20s`}
+                  src={`${GRAFANA_BASE_URL}?orgId=1&var-url=${encodedUrl}&panelId=${id}&theme=dark&refresh=10s`}
                   width="100%"
                   height="100%"
                   frameBorder="0"
