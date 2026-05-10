@@ -39,6 +39,13 @@ services:
 
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      
+      # 2. Yeh bina login ke (Anonymous) dashboard dekhne dega
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      
+      # 3. Anonymous user ko sirf dekhne ki permission dega (Edit nahi kar payega)
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
 
     depends_on:
       - prometheus

@@ -44,10 +44,11 @@ export const monitorWorker = new Worker(
         [status, responseTimeMs, monitorId]
       );
 
-      if (status !== 200) {
-        await sendDiscordAlert(`🚨 ALERT: ${url} is DOWN! Status: ${status}`);
-      }
-
+   if (status >= 500) {
+  await sendDiscordAlert(
+    `🚨 ALERT: ${url} is DOWN! Status: ${status}`
+  );
+}
       console.log(`❌ ${url} is DOWN (${status}) - ${responseTimeMs}ms`);
     }
   },
