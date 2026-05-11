@@ -25,24 +25,33 @@ WatchTower was built as an intensive engineering project to master **Message Que
 
 ---
 
-## 🏗️ High-Level System Architecture
+## 🏗️ Monitoring Lifecycle Architecture
 
 WatchTower completely decouples the user-facing API from the heavy lifting of background pinging.
 
 ```mermaid
 graph TD
-    User([👨‍💻 User]) --> UI[Next.js Dashboard]
-    UI -->|JWT Auth| Backend[Express.js API]
-    
-    Backend -->|CRUD Operations| DB[(Neon PostgreSQL)]
-    Backend -->|Schedule Job| Queue[(Upstash Redis / BullMQ)]
-    
-    Queue --> Worker[Background Worker Node]
-    
-    Worker -->|HTTP Ping| TargetWebsites((Monitored Websites))
-    Worker -->|Update Status| DB
-    Worker -->|Emit Metrics| Prom[Prometheus]
-    Worker -->|Downtime!| Discord[Discord Webhook Alert]
-    
-    Prom --> Grafana[Grafana Dashboards]
-    Grafana -->|Embed via iframe| UI
+
+    A[👨‍💻 User Login / Signup] --> B[Next.js Dashboard]
+
+    B -->|JWT Auth Request| C[Express.js Backend]
+
+    B -->|Add Monitor URL| C
+
+    C -->|Store User & Monitor Data| D[(Neon PostgreSQL)]
+
+    C -->|Create Monitoring Job| E[(Upstash Redis Queue / BullMQ)]
+
+    E --> F[Background Worker]
+
+    F -->|Ping Website Every Interval| G[(Target Website)]
+
+    F -->|Store Status & Latency| D
+
+    F -->|Expose Metrics| H[Prometheus]
+
+    H --> I[Grafana Dashboard]
+
+    I -->|Embedded Analytics| B
+
+    F -->|Downtime Alert 🚨| J[Discord Webhook]
