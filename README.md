@@ -429,31 +429,6 @@ This project deeply explores:
 
 ---
 
-# 🚀 Future Improvements
-
-- Kubernetes-based worker orchestration
-- Distributed worker autoscaling
-- Slack / Telegram alerting
-- AI-powered anomaly detection
-- Persistent Prometheus volumes
-- Advanced p95/p99 latency analytics
-- Role-based access control (RBAC)
-- Monitoring history retention policies
-
----
-
-# 🤝 Contributing
-
-Pull requests, ideas, and engineering discussions are always welcome.
-
----
-
-# 📜 License
-
-MIT License
-
----
-
 <div align="center">
 
 ### ⭐ If you found this project interesting, consider giving it a star ⭐
