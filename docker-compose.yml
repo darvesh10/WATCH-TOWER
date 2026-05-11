@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # 1. Backend & Worker
@@ -7,53 +6,48 @@ services:
     container_name: watchtower-app
     ports:
       - "3000:3000"
-
     env_file:
       - .env
-
     depends_on:
       - prometheus
-
     restart: always
 
   # 2. Prometheus
   prometheus:
     image: prom/prometheus
     container_name: prometheus
-
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
-
     ports:
       - "9090:9090"
-
     restart: always
 
   # 3. Grafana
   grafana:
     image: grafana/grafana
     container_name: grafana
-
     ports:
       - "3001:3000"
-
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_SECURITY_ALLOW_EMBEDDING=true
-      
-      # 2. Yeh bina login ke (Anonymous) dashboard dekhne dega
       - GF_AUTH_ANONYMOUS_ENABLED=true
-      
-      # 3. Anonymous user ko sirf dekhne ki permission dega (Edit nahi kar payega)
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
-
     depends_on:
       - prometheus
-
     restart: always
-
     volumes:
       - grafana_data:/var/lib/grafana
+
+  # 4. Frontend
+  frontend:
+    build: ./watchtower-frontend
+    container_name: watchtower-frontend
+    ports:
+      - "3002:3000"
+    env_file:
+      - ./watchtower-frontend/.env.local
+    restart: always
 
 volumes:
   grafana_data:
