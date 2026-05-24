@@ -64,9 +64,12 @@ export default function HomePage() {
 
         {/* CTA */}
         <div className="mt-8 flex flex-col gap-4 sm:mt-10 sm:flex-row">
-          <button className="rounded-xl bg-emerald-400 px-7 py-4 text-base font-bold text-black transition hover:scale-105 hover:bg-emerald-300 sm:px-8">
+          <a
+            href="/login"
+            className="rounded-xl bg-emerald-400 px-7 py-4 text-base font-bold text-black transition hover:scale-105 hover:bg-emerald-300 sm:px-8"
+          >
             Start Monitoring
-          </button>
+          </a>
           <button className="rounded-xl border border-white/10 bg-white/5 px-7 py-4 text-base font-bold text-white transition hover:bg-white/10 sm:px-8">
             View Demo
           </button>
